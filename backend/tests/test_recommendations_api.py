@@ -561,6 +561,19 @@ def test_create_soil_reading_invalid_moisture_returns_422():
     assert response.status_code == 422
 
 
+def test_create_soil_reading_client_timestamp_returns_422():
+    response = client.post(
+        "/api/v1/soil",
+        json={
+            "field_id": 1,
+            "moisture": 25,
+            "recorded_at": "2026-10-20T00:00:00",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_get_soil_reading_not_found():
     mock_db = MagicMock()
     mock_db.get.return_value = None
