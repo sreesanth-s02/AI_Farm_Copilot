@@ -8,10 +8,19 @@ from app.api.fields import router as fields_router
 from app.api.crops import router as crops_router
 from app.api.soil import router as soil_router
 from app.api.recommendations import router as recommendations_router
+from app.api.disease import router as disease_router
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(
     title="AI Farm Copilot API",
     description="Backend API for AI-powered precision agriculture",
     version="1.0.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.include_router(farmers_router)
 app.include_router(farms_router)
@@ -20,6 +29,7 @@ app.include_router(crops_router)
 app.include_router(soil_router)
 app.include_router(weather_router)
 app.include_router(recommendations_router)
+app.include_router(disease_router)
 @app.get("/")
 def root():
     return {
