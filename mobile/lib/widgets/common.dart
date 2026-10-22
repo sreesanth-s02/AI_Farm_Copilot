@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
+import '../models/fertiliser_recommendation.dart';
 class PageFrame extends StatelessWidget {
   final Widget child; const PageFrame({super.key,required this.child});
   @override Widget build(BuildContext context)=>LayoutBuilder(builder:(context,c)=>SingleChildScrollView(padding:EdgeInsets.all(c.maxWidth>=700?28:18),child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:1050),child:child))));
@@ -29,3 +30,70 @@ class MetricCard extends StatelessWidget {
   );
 }
 class IrrigationCard extends StatelessWidget {final Map<String,dynamic>? data;const IrrigationCard({super.key,required this.data});@override Widget build(BuildContext context){final status='${data?['advisory']??'UNAVAILABLE'}';final msg='${data?['message']??'No irrigation recommendation available.'}';final reasons=data?['reasons'];final warnings=data?['warnings'];return Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Row(children:[Icon(Icons.water_outlined,color:forestGreen),SizedBox(width:8),Text('Irrigation recommendation',style:TextStyle(fontSize:17,fontWeight:FontWeight.bold,color:forestGreen))]),const SizedBox(height:10),Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(color:status=='IRRIGATION_REVIEW'?const Color(0xFFFFF0D8):status=='INSUFFICIENT_DATA'?const Color(0xFFFFE8E8):const Color(0xFFE5F2E8),borderRadius:BorderRadius.circular(30)),child:Text(status.replaceAll('_',' '),style:const TextStyle(fontWeight:FontWeight.bold))),const SizedBox(height:9),Text(msg),if(reasons is List && reasons.isNotEmpty) ...[const SizedBox(height:10),const Text('Decision factors',style:TextStyle(fontWeight:FontWeight.bold)),...reasons.whereType<Map>().map((r)=>Padding(padding:const EdgeInsets.only(top:5),child:Text('• ${r['factor']}: ${r['value']??'Unavailable'}${r['unit']==null?'':' ${r['unit']}'}${r['growth_stage']==null?'':' (${r['growth_stage']})'}',style:const TextStyle(color:mutedText,fontSize:13))))],if(warnings is List && warnings.isNotEmpty) ...[const SizedBox(height:8),...warnings.map((w)=>Text('⚠ $w',style:const TextStyle(color:Color(0xFF9A5A00),fontSize:12)))],if(data?['decision_basis']!=null) Padding(padding:const EdgeInsets.only(top:10),child:Text('${data!['decision_basis']}',style:const TextStyle(fontSize:11,color:mutedText))) ]));}}
+class FertiliserCard extends StatelessWidget {
+  const FertiliserCard({super.key, required this.data, required this.error});
+  final FertiliserRecommendation? data;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error != null) {
+      return Panel(child: Text('Fertiliser assessment unavailable: $error',
+          style: const TextStyle(color: mutedText)));
+    }
+    if (data == null) {
+      return const Panel(child: Text('Fertiliser assessment is unavailable.',
+          style: TextStyle(color: mutedText)));
+    }
+    final assessment = data!;
+    final status = assessment.advisory?.replaceAll('_', ' ') ?? 'Unavailable';
+    final statusColor = assessment.advisory == 'REVIEW_REQUIRED'
+        ? const Color(0xFFFFF0D8)
+        : const Color(0xFFE5EAE2);
+    final nutrients = ['nitrogen', 'phosphorus', 'potassium'];
+    return Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(children: [Icon(Icons.science_outlined, color: forestGreen),
+          SizedBox(width: 8), Expanded(child: Text('Fertiliser assessment',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold,
+              color: forestGreen)))]),
+        const SizedBox(height: 10),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(color: statusColor,
+            borderRadius: BorderRadius.circular(30)),
+          child: Text(status, style: const TextStyle(fontWeight: FontWeight.bold))),
+        const SizedBox(height: 12),
+        Text('Crop: ${showValue(assessment.crop?['name'])}'
+            '${assessment.crop?['growth_stage'] == null ? '' : ' • ${assessment.crop!['growth_stage']}'}'),
+        Text('Soil reading: ${assessment.soil == null ? 'Unavailable' : showValue(assessment.soil!.recordedAt)}'),
+        const SizedBox(height: 8),
+        const Text('Recorded NPK values', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 16, runSpacing: 6, children: nutrients.map((name) {
+          final measurement = assessment.soil?.measurements[name];
+          final value = measurement?.value == null
+              ? 'Unavailable'
+              : '${measurement!.value} ${measurement.unit ?? 'unit unknown'}';
+          return Text('${name[0].toUpperCase()}${name.substring(1)}: $value',
+              style: const TextStyle(color: mutedText));
+        }).toList()),
+        if (assessment.warnings.isNotEmpty) ...[
+          const SizedBox(height: 12), const Text('Warnings',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          ...assessment.warnings.map((warning) => Text('• $warning',
+              style: const TextStyle(color: Color(0xFF9A5A00), fontSize: 12))),
+        ],
+        if (assessment.nextSteps.isNotEmpty) ...[
+          const SizedBox(height: 12), const Text('Next steps',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          ...assessment.nextSteps.map((step) => Text('• $step',
+              style: const TextStyle(color: mutedText, fontSize: 12))),
+        ],
+        if (assessment.disclaimer != null) Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(assessment.disclaimer!,
+              style: const TextStyle(color: mutedText, fontSize: 11)),
+        ),
+      ]));
+  }
+}

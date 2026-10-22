@@ -23,10 +23,44 @@ void main() {
     expect(find.text('Irrigation recommendation'), findsOneWidget);
     expect(find.text('Scan a plant leaf'), findsOneWidget);
   });
+
+  testWidgets('shows review-required fertiliser assessment with partial NPK',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: farmTheme(),
+      home: FarmDashboard(api: _FakeApiService(advisory: 'REVIEW_REQUIRED')),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fertiliser assessment'), findsOneWidget);
+    expect(find.text('REVIEW REQUIRED'), findsOneWidget);
+    expect(find.text('Nitrogen: 40 unknown'), findsOneWidget);
+    expect(find.text('Phosphorus: Unavailable'), findsOneWidget);
+    expect(find.text('Potassium: 30 unknown'), findsOneWidget);
+    expect(find.textContaining('The NPK record is partial.'), findsOneWidget);
+    expect(find.textContaining('Confirm the soil test details.'), findsOneWidget);
+    expect(find.textContaining('Test disclaimer.'), findsOneWidget);
+  });
+
+  testWidgets('shows insufficient-data fertiliser assessment honestly',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: farmTheme(),
+      home: FarmDashboard(api: _FakeApiService(advisory: 'INSUFFICIENT_DATA')),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('INSUFFICIENT DATA'), findsOneWidget);
+    expect(find.text('Phosphorus: Unavailable'), findsOneWidget);
+    expect(find.text('Unavailable'), findsWidgets);
+  });
 }
 
 class _FakeApiService extends ApiService {
-  _FakeApiService() : super(baseUrl: 'http://fake.test');
+  _FakeApiService({this.advisory = 'REVIEW_REQUIRED'})
+      : super(baseUrl: 'http://fake.test');
+
+  final String advisory;
 
   static const _field = <String, dynamic>{
     'id': 1,
@@ -100,6 +134,23 @@ class _FakeApiService extends ApiService {
           ],
           'warnings': <String>[],
           'decision_basis': 'Test recommendation',
+        };
+      case '/api/v1/recommendations/fertiliser/1':
+        return {
+          'field': _field,
+          'crop': {'name': 'Tomato'},
+          'soil': {
+            'recorded_at': '2099-01-01T08:00:00Z',
+            'measurements': {
+              'nitrogen': {'value': 40, 'unit': 'unknown'},
+              'phosphorus': {'value': null, 'unit': null},
+              'potassium': {'value': 30, 'unit': 'unknown'},
+            },
+          },
+          'advisory': advisory,
+          'warnings': ['The NPK record is partial.'],
+          'next_steps': ['Confirm the soil test details.'],
+          'disclaimer': 'Test disclaimer.',
         };
       default:
         throw ApiException('Unexpected fake object path: $path');

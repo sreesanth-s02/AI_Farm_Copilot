@@ -1,6 +1,7 @@
 
 from unittest.mock import MagicMock, patch
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -72,6 +73,60 @@ def test_irrigation_api_returns_404_for_missing_field():
         try:
             response = client.get(
                 "/api/v1/recommendations/irrigation/999"
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Field not found"
+
+
+def test_fertiliser_api_returns_assessment():
+    mock_db = MagicMock()
+    expected = {
+        "field": {"id": 1},
+        "crop": {"name": "Rice"},
+        "soil": {"measurements": {}},
+        "advisory": "REVIEW_REQUIRED",
+        "reasons": [],
+        "warnings": [],
+        "next_steps": [],
+        "disclaimer": "Prototype disclaimer",
+    }
+
+    with patch(
+        "app.api.recommendations.get_fertiliser_assessment",
+        return_value=expected,
+    ) as mock_assessment:
+        app.dependency_overrides[get_db] = lambda: mock_db
+
+        try:
+            response = client.get(
+                "/api/v1/recommendations/fertiliser/1"
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == expected
+    mock_assessment.assert_called_once_with(1, mock_db)
+
+
+def test_fertiliser_api_returns_404_for_missing_field():
+    mock_db = MagicMock()
+
+    with patch(
+        "app.api.recommendations.get_fertiliser_assessment",
+        side_effect=HTTPException(
+            status_code=404,
+            detail="Field not found",
+        ),
+    ):
+        app.dependency_overrides[get_db] = lambda: mock_db
+
+        try:
+            response = client.get(
+                "/api/v1/recommendations/fertiliser/999"
             )
         finally:
             app.dependency_overrides.clear()

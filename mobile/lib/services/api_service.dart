@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../app_theme.dart';
+import '../models/fertiliser_recommendation.dart';
 
 class ApiService {
   const ApiService({this.baseUrl = apiBaseUrl});
@@ -25,6 +26,7 @@ class ApiService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('API returned HTTP ${response.statusCode}');
     }
+
     final decoded = jsonDecode(response.body);
     if (decoded is List) {
       return decoded
@@ -33,6 +35,12 @@ class ApiService {
           .toList();
     }
     throw ApiException('Unexpected response format from $path');
+  }
+
+  Future<FertiliserRecommendation> getFertiliserAssessment(int fieldId) async {
+    final response =
+        await getObject('/api/v1/recommendations/fertiliser/$fieldId');
+    return FertiliserRecommendation.fromJson(response);
   }
 
   Future<Map<String, dynamic>> predictDisease({

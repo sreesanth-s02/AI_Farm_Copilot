@@ -5,6 +5,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/fields_screen.dart';
 import 'screens/weather_screen.dart';
 import 'screens/disease_scanner_screen.dart';
+import 'models/fertiliser_recommendation.dart';
 class FarmDashboard extends StatefulWidget {
   const FarmDashboard({super.key, this.api = const ApiService()});
 
@@ -20,6 +21,8 @@ class _FarmDashboardState extends State<FarmDashboard> {
   List<Map<String,dynamic>> fields = [];
   int? selectedFieldId;
   Map<String,dynamic>? field, crop, soil, irrigation, weather, hourly;
+  FertiliserRecommendation? fertiliser;
+  String? fertiliserError;
 
   @override
   void initState() { super.initState(); loadFields(); }
@@ -66,6 +69,13 @@ class _FarmDashboardState extends State<FarmDashboard> {
           w=wx[0]; h=wx[1];
         } else { weatherError = 'Field coordinates are missing.'; }
       } catch (e) { weatherError = friendlyError(e); }
+      FertiliserRecommendation? fertiliserResult;
+      String? fertiliserLoadError;
+      try {
+        fertiliserResult = await widget.api.getFertiliserAssessment(id);
+      } catch (e) {
+        fertiliserLoadError = friendlyError(e);
+      }
       if (!mounted) return;
       setState(() {
         field=f;
@@ -73,6 +83,8 @@ class _FarmDashboardState extends State<FarmDashboard> {
         crop = activeCrops.isNotEmpty ? activeCrops.first : (crops.isNotEmpty ? crops.first : null);
         soil=soils.isNotEmpty ? soils.first : null; irrigation=results[2] as Map<String,dynamic>;
         weather=w; hourly=h; loading=false; error=null;
+        fertiliser = fertiliserResult;
+        fertiliserError = fertiliserLoadError;
         if (weatherError != null && w == null) error = 'Field data loaded. Weather unavailable: $weatherError';
       });
     } catch (e) {
@@ -85,7 +97,7 @@ class _FarmDashboardState extends State<FarmDashboard> {
   Widget build(BuildContext context) {
     final titles=['AI Farm Copilot','My Fields','Disease Scanner','Weather'];
     final pages=<Widget>[
-      HomePage(loading:loading,error:error,fields:fields,selectedFieldId:selectedFieldId,field:field,crop:crop,soil:soil,irrigation:irrigation,weather:weather,onFieldChanged:chooseField,onRefresh:loadFields,onScan:()=>setState(()=>selectedIndex=2)),
+      HomePage(loading:loading,error:error,fields:fields,selectedFieldId:selectedFieldId,field:field,crop:crop,soil:soil,irrigation:irrigation,weather:weather,fertiliser:fertiliser,fertiliserError:fertiliserError,onFieldChanged:chooseField,onRefresh:loadFields,onScan:()=>setState(()=>selectedIndex=2)),
       FieldsPage(loading:loading,error:error,fields:fields,selectedFieldId:selectedFieldId,field:field,crop:crop,soil:soil,onSelect:chooseField,onRefresh:loadFields),
       const DiseaseScannerPage(),
       WeatherPage(loading:loading,error:error,field:field,weather:weather,hourly:hourly,onRefresh:loadFields),
